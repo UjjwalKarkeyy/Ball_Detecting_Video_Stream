@@ -1,5 +1,8 @@
 import cv2
-import time
+from util import get_limits
+
+# Have to install module as Pillow but import as PIL
+from PIL import Image
 
 # Using index 0 for capturing video stream
 cap = cv2.VideoCapture(0)
@@ -12,6 +15,9 @@ if not cap.isOpened():
     print("Cannot open camera")
     exit()
 
+# BRG value for color pink
+pink = [203,192,255]
+
 while True:
     ret, frame = cap.read() # Returns true/false and frame
     
@@ -20,15 +26,38 @@ while True:
         print("Cannot receive frame")
         break
 
-    # Converting frame to gray scale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Getting the lower and upper limit i.e., the range of color that I spoke about in util file
+    lowerLimit, upperLimit = get_limits(pink)
 
-    # Showing frame in a pop up window
-    cv2.imshow('frame', gray)
+    # Converting from BGR to HSV
+    hsvImg = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+    # Its like applying a filter that is black with only highlighting the color that we need with bright white
+    mask = cv2.inRange(hsvImg, lowerLimit, upperLimit)
+
+    # Run the following and show the color object in front of the cam to understand what mask does
+    # cv2.imshow('mask', mask)
+
+    # Converting to image from array
+    mask_img = Image.fromarray(mask)
+
+    # Using that image and getting the boundaries of it in the form of coordinates
+    bbox = mask_img.getbbox()
+
+    # If no boundaries then bbox (boundary box) returns None
+    if bbox is not None:
+        x1,y1,x2,y2 = bbox
+        # Using the coordinates returned by bbox to draw a green rectange on the frame
+        # First argument if passing the frame, then the coordinates, then the color of border
+        # Lastly, the thickness of the border
+        cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0),5)
+
+    # Two arguments, first is the name of the window and second is the frame itself.
+    cv2.imshow("frame",frame)
 
     # Wait for zero milli seconds which basically means cv2 is checking if there was any input 'q' to stop the window
     # Also, ord means 'Ordinal' basically converting 'q' to its unicode equivalent 
-    if cv2.waitKey(0) == ord('q'):
+    if cv2.waitKey(1) == ord('q'):
         break
 
 cap.release()
